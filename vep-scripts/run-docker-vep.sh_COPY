@@ -1,0 +1,2 @@
+
+docker run -v /Users/mmmskje2/.vep/:/home/vep/.vep -v /Users/mmmskje2/Documents/vep/output:/home/vep/src/ensembl-vep/output/ --rm willmclaren/ensembl-vep ./vep -i examples/homo_sapiens_GRCh38.vcf -o output/out.vep --offline --force_overwrite --assembly GRCh38

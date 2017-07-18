@@ -1,0 +1,129 @@
+#!/usr/bin/perl
+use strict;
+use lib '/Users/mmmskje2/Documents/git/perl_modules/';
+use tabix;
+
+main();
+sub main{
+    my ($hash,$gnomad);
+    
+    ### declare and store fullpaths to ALL gnomad files
+    ($hash)=find_gnomad_file($hash);
+    
+    ### 
+    my $file_var = "/Users/mmmskje2/Desktop/intronics/var-freq-RD.txt";
+    ($hash)=create_variant_hash($hash,$file_var);
+    
+    ### define gnomad file for use and perform gnomad comparison
+    ($hash)=compare_gnomad($hash);
+    
+    
+#($gnomad)=tabix::query($file,$query);
+}
+############
+sub compare_gnomad{
+    my ($h_compare)=@_;
+    my $wd = "/Users/mmmskje2/Desktop/intronics/gnomad-output";
+    open (REFMATCH, ">$wd/refmatch.txt");
+    open (NONREFMATCH, ">$wd/nonrefmatch.txt");
+    open (GNOMADFREQ, ">$wd/gnomadfreq.txt");
+    open (ABSENTGNOMAD, ">$wd/gnomadabsent.txt");
+    print NONREFMATCH "Chr\tPosition_Variant\tReference_Variant\tAlt_Variant\tPosition_Gnomad\tReference_Gnomad\tAlt_Gnomad\tPosition_Difference\n";
+    print GNOMADFREQ "Chr\tPosition\tAlt_Variant\tVariant_Count\tGnomad_Count\tGnomad_AF\n";
+    print ABSENTGNOMAD "Chr\tPosition\tAlt_Variant\tVariant_Count\tGnomad_Count\tGnomad_AF\n";
+    foreach my $variant(sort keys %{$h_compare->{variant}}){
+	print "$variant\n";
+	my @splitVar = split "\t", $variant;
+	my ($ref,$alt,$pos,$chrOI) = ($h_compare->{variant_wRef}{$variant},$splitVar[2],$splitVar[1],$splitVar[0]);
+	my $gnomadOI = $h_compare->{gnomadFile_Chr}{$chrOI};
+	if (!-e $gnomadOI) { die "gnomad file doesn't exist : $!"}; ## if gnomad file doesn't exist then kill analysis
+	my ($file,$query) = ($gnomadOI,$h_compare->{gnomad_query}{$variant});
+	my $gnomad=tabix::query($file,$query); ## gnomad record retrieved, now needs analysis #### COMMON SOURCE OF ERROR ### make sure tabix is loaded ###
+	my $hit = 'N';
+	for (my $i = 0; $i < scalar@{$gnomad}; $i++){
+	    my %data;
+	    my @ln = split ('\t', ${$gnomad}[$i]);
+	    my @alt_col = split (',',$ln[4]);
+	    
+### SECTION START - define the number of nucleotides in reference ###
+	    my $length_var = length($ref);
+            my $length_gnomad = length($ln[3]);
+            next unless ($length_var == $length_gnomad); 
+### SECTION END ###
+### SECTION START - check if reference of variant matches with reference of alternate ###
+	    if ($ln[3] eq $ref){
+		print REFMATCH "$variant\n";
+	    }
+	    else{
+		my $pos_diff = ($pos - $ln[1]);
+		print NONREFMATCH "$chrOI\t$pos\t$ref\t$alt\t$ln[1]\t$ln[3]\t$ln[4]\t$pos_diff\n";
+	    }
+### SECTION END ###
+### SECTION START - compare variant to each possible alternate allele ### 
+	    for (my $j = 0; $j < scalar@alt_col; $j++){
+		if ($ln[3] eq $ref && $alt_col[$j] eq $alt){# && $ln[6]){ #ne 'AC_Adj0_Filter'){
+		    my $af;
+		    my @info = split(';', $ln[7]);
+		    foreach my $inf (@info){
+			my ($tag,$val) = ($inf =~ /(.*?)=(.*)/);
+			my @vals = split(',',$val);
+			$data{$tag} = $vals[$j];
+		    }
+		    unless ($data{AC} == '0' || $data{AN} == '0'){
+			$af = ($data{AC}/$data{AN})*100;
+			print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$data{AC}\t$af\n";
+			($hit) = 'Y';
+		    }
+		}
+	    }
+	}
+	if ($hit eq 'N'){
+	    print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
+	    print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
+	}
+    }
+
+    return($h_compare);
+}
+
+############
+sub create_variant_hash{
+    my ($h_var,$file1)=@_;
+    open (ORG, $file1) or die "cannot open $file1 : $!";
+    while(<ORG>){
+        chomp;
+	# chr1    10032272        .       T       A       3
+        my @d = split "\t";
+        my ($c,$p,$id,$ref,$alt,$count) = ($d[0],$d[1],$d[2],$d[3],$d[4],$d[5]);
+        my $variant = join("\t",$c,$p,$alt);
+        $h_var->{variant}{$variant}++;
+	$h_var->{variant_wRef}{$variant}=$ref;
+        my $position = join("\t",$c,$p);
+	my $c_NoChr = $c; ($c_NoChr=~s/chr//);
+	my $gnomad_query = "$c_NoChr:$p-$p";
+        $h_var->{variant_position}{$position}++;
+	$h_var->{variant_chr}{$c}{$variant}++;
+	$h_var->{gnomad_query}{$variant}=$gnomad_query;
+	$h_var->{variant_count}{$variant}=$count;
+    }
+    close ORG;
+    return($h_var);
+}
+
+############
+sub find_gnomad_file{
+    my ($h_gnomad) = @_;
+    my $gnomadPaths = "/Users/mmmskje2/Documents/gnomad/data/fullpaths-gnomad.txt";
+    open (GPATH, $gnomadPaths) or die "cannot open $gnomadPaths : $!";
+    while(<GPATH>){
+	chomp;
+	my @d = split "\t";
+	my ($chr,$path) = ($d[0],$d[1]);
+#    print "#$chr#\t#$path#\n";
+	$h_gnomad->{gnomadFile_noChr}{$chr}=$path;
+	$h_gnomad->{gnomadFile_Chr}{"chr$chr"}=$path;
+    }
+    close GPATH;
+    return($h_gnomad);
+}
+##############
