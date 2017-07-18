@@ -47,7 +47,7 @@ sub compare_gnomad{
     open (ABSENTGNOMAD, ">$wd/gnomadabsent.txt");
     open (COMBINED, ">$wd/combined-Input-Gnomad.txt");
     print NONREFMATCH "Chr\tPosition_Variant\tReference_Variant\tAlt_Variant\tPosition_Gnomad\tReference_Gnomad\tAlt_Gnomad\tPosition_Difference\n";
-    print GNOMADFREQ "Chr\tPosition\tAlt_Variant\tVariant_Count\tGnomad_Count\tGnomad_AF\tGnomad_Hom\tGnomad_Hom_Males\n";
+    print GNOMADFREQ "Chr\tPosition\tAlt_Variant\tVariant_Count\tCount_Total_Gnomad\tCount_Genomes_Gnomad\tCount_Exomes_Gnomad\tAF_Genomes_Gnomad\tAF_Exomes_Gnomad\tHom_Genomes_Gnomad_Hom\tGnomad_Hom_Males\n";
     print ABSENTGNOMAD "Chr\tPosition\tAlt_Variant\tVariant_Count\tGnomad_Count\tGnomad_AF\tGnomad_Hom\tGnomad_Hom_Males\n";
     
         ### INDELS ###
@@ -65,6 +65,8 @@ sub compare_gnomad{
 	my ($file,$query) = ($gnomadOI,$h_compare->{gnomad_query}{$variant});
 	my $gnomad=tabix::query($file,$query); ## gnomad record retrieved, now needs analysis #### COMMON SOURCE OF ERROR ### make sure tabix is loaded ###
 	my $nHits = scalar@{$gnomad}; ## must declare scalar for array before subroutine, bug made it inaccessible to access after entered subroutine compare_gnomad_bulk
+	my $gnomad_exomes=tabix::query("/Users/mmmskje2/Documents/gnomad/gnomad_exomes/gnomad.exomes.r2.0.1.sites.vcf.gz",$query);
+	my $nHits_exomes = scalar@{$gnomad_exomes};
 	
 	#### the following section is prepared to enable splitting of SNVs and indels when compared to gnomad data ###
 	#### this is done on the basis of reference and alternate allele length ####
@@ -74,11 +76,17 @@ sub compare_gnomad{
 	### LOGIC 1 - SNVs ###
 	if ($length_var == 1 && $length_var eq $length_alt){
 #	if ($length_var == 1){
-	my($af,$hit,$overlap,$over,$altAllele,$nHom,$nHom_Male,$allele_count)=compare_gnomad_bulk($gnomad,$nHits,$length_var,$length_alt,$ref,$alt);
-	    print "$variant\t$hit\t$af\n";
-	    foreach my $fullLine (keys %{$h_compare->{variant_line}{$variant}}){
-		if ($hit eq 'Y'){
-		    print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$allele_count\t$af\t$nHom\t$nHom_Male\n";
+	my($af,$hit,$overlap,$over,$altAllele,$nHom,$nHemi,$allele_count)=compare_gnomad_bulk($gnomad,$nHits,$length_var,$length_alt,$ref,$alt);
+#	print "$variant\t$hit\t$af\n";
+	my($af_ex,$hit_ex,$overlap_ex,$over_ex,$altAllele_ex,$nHom_ex,$nHemi_ex,$allele_count_ex)=compare_gnomad_bulk($gnomad_exomes,$nHits_exomes,$length_var,$length_alt,$ref,$alt);
+	my $total_count = ($allele_count + $allele_count_ex);
+	my $total_hom_count = ($nHom + $nHom_ex);
+	my $total_hemi_count = ($nHemi + $nHemi_ex);
+	foreach my $fullLine (keys %{$h_compare->{variant_line}{$variant}}){
+		if ($hit eq 'Y' or $hit_ex eq 'Y'){
+		    print "$variant\t$h_compare->{variant_count}{$variant}\t$total_count\t$total_hom_count\t$total_hemi_count\n";
+		    print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$total_count\t$total_hom_count\t$total_hemi_count\n";
+		    print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$allele_count\t$af\t$nHom\t$nHemi\n";
 		    print COMBINED "$fullLine\t$af\t$nHom\n";
 		}
 		elsif($hit eq 'N'){
