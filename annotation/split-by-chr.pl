@@ -21,7 +21,7 @@ sub main{
 	my @d = split "\t";
 	my ($chr) = $d[0];
 	if ($_ =~/^#/){
-	    print OUT "$_\n";
+	    print OUT "$d[0]\t$d[1]\t$d[2]\t$d[3]\t$d[4]\n";
 	}
 	if ($chr eq $chrOI){
 	    print OUT "$_\n";
