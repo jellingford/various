@@ -60,6 +60,9 @@ sub compare_gnomad{
 	#print "$variant\n";
 	my @splitVar = split "\t", $variant;
 	my ($ref,$alt,$pos,$chrOI) = ($h_compare->{variant_wRef}{$variant},$splitVar[2],$splitVar[1],$splitVar[0]);
+	if ($chrOI=~/\d+/){
+	    ($chrOI) = "chr$chrOI";
+		}###
 	my $gnomadOI = $h_compare->{gnomadFile_Chr}{$chrOI};
 	if (!-e $gnomadOI) { warn "gnomad file doesn't exist : $!"}; ## if gnomad file doesn't exist then kill analysis
 	my ($file,$query) = ($gnomadOI,$h_compare->{gnomad_query}{$variant});
