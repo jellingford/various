@@ -48,6 +48,9 @@ sub make_gnomad_hash{
     chomp;
     my @d = split "\t";
     my ($c,$p,$ref,$alt)=($d[0],$d[1],$d[2],$d[3]);
+#    if ($c =~/\d+/){ 
+#	($c) = "chr$c";
+#    }
     my $varGno = join("\t",$c,$p,$alt);
     my $varGnoPrint = join("\t",$c,$p,$ref,$alt);
     $h->{gnomad}{$varGno}++;
@@ -68,6 +71,9 @@ sub make_vep_hash{
     my @dat = split "\t";
     my @CHROM=split ':', $dat[0];
     my ($c,$p,$alt,$trans,$eff,$id,$gene,$cDNA,$exac) = ($CHROM[0],$CHROM[1],$dat[1],$dat[2],$dat[3],$dat[4],$dat[5],$dat[6],$dat[7]);
+    if ($c =~/\d+/){ 
+	($c) = "chr$c";
+    }
     my $varVep = join("\t",$c,$p,$alt);
     $h->{vepNum}{$varVep}++;
     $h->{vep}{$varVep}{$cDNA}++;
