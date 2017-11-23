@@ -58,18 +58,21 @@ sub compare_gnomad{
     foreach my $variant(sort keys %{$h_compare->{variant}}){
 	#print "$variant\n";
 	my @splitVar = split "\t", $variant;
-	my ($ref,$alt,$pos,$chrOI) = ($h_compare->{variant_wRef}{$variant},$splitVar[2],$splitVar[1],$splitVar[0]);
+	my ($ref,$alt,$pos,$chrOI,$rsID) = ($h_compare->{variant_wRef}{$variant},$splitVar[2],$splitVar[1],$splitVar[0],$splitVar[3]);
 	my $gnomadOI = $h_compare->{gnomadFile_Chr}{$chrOI};
 	if (!-e $gnomadOI) { warn "gnomad file doesn't exist : $!"}; ## if gnomad file doesn't exist then kill analysis
 	my ($file,$query) = ($gnomadOI,$h_compare->{gnomad_query}{$variant});
 	my $gnomad=tabix::query($file,$query); ## gnomad record retrieved, now needs analysis #### COMMON SOURCE OF ERROR ### make sure tabix is loaded ###
 	my $nHits = scalar@{$gnomad}; ## must declare scalar for array before subroutine, bug made it inaccessible to access after entered subroutine compare_gnomad_bulk
-	
+	print "hits=$nHits\n";
 	#### the following section is prepared to enable splitting of SNVs and indels when compared to gnomad data ###
 	#### this is done on the basis of reference and alternate allele length ####
 	#### currently erronously misses 1/2 genotypes ###
-	my ($length_var,$length_alt) = (length($ref),length($alt));
+#	foreach my $jay (@{$gnomad}){ ## added
+#	next unless ($nHits > 1);
 
+	my ($length_var,$length_alt) = (length($ref),length($alt));
+	
 	### LOGIC 1 - SNVs ###
 	if ($length_var == 1 && $length_var eq $length_alt){
 #	if ($length_var == 1){
@@ -81,9 +84,9 @@ sub compare_gnomad{
 		    print COMBINED "$fullLine\t$af\n";
 		}
 		elsif($hit eq 'N'){
-		    print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
-		    print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
-		    print COMBINED "$fullLine\t$af\n";
+		    print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
+		    print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
+		    print COMBINED "$fullLine\t$af\t$ref\n";
 		}
 		if ($overlap eq 'Y'){
 		    foreach my $o (keys %{$over->{AltAllele}}){
@@ -99,11 +102,11 @@ sub compare_gnomad{
 	    my($af,$hit,$overlap,$over,$altAllele)=compare_gnomad_bulk($gnomad,$nHits,$length_var,$length_alt,$ref,$alt);
 #	    print "$variant\t$hit\t$af\n";
 	    if ($hit eq 'Y'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\t$ref\n";
             }
             elsif($hit eq 'N'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
-                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
+                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
             }
 	    if ($overlap eq 'Y'){
                 foreach my $o (keys %{$over->{AltAllele}}){
@@ -118,11 +121,11 @@ sub compare_gnomad{
 	    my($af,$hit,$overlap,$over,$altAllele)=compare_gnomad_bulk($gnomad,$nHits,$length_var,$length_alt,$ref,$alt);
  #           print "$variant\t$hit\t$af\n";
 	    if ($hit eq 'Y'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\t$ref\n";
             }
             elsif($hit eq 'N'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
-                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
+                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
             }
 	    if ($overlap eq 'Y'){
 		foreach my $o (keys %{$over->{AltAllele}}){
@@ -137,11 +140,11 @@ sub compare_gnomad{
 	    my($af,$hit,$overlap,$over,$altAllele)=compare_gnomad_bulk($gnomad,$nHits,$length_var,$length_alt,$ref,$alt);
   #          print "$variant\t$hit\t$af\n";
 	    if ($hit eq 'Y'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\t$ref\n";
             }
             elsif($hit eq 'N'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
-                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
+                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
             }
 	    if ($overlap eq 'Y'){
 		foreach my $o (keys %{$over->{AltAllele}}){
@@ -156,11 +159,11 @@ sub compare_gnomad{
 	    my($af,$hit,$overlap,$over,$altAllele)=compare_gnomad_bulk($gnomad,$nHits,$length_var,$length_alt,$ref,$alt);
    #         print "$variant\t$hit\t$af\n";
 	    if ($hit eq 'Y'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t$af\t$ref\n";
 	    }
             elsif($hit eq 'N'){
-                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
-                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t0\n";
+                print GNOMADFREQ "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
+                print ABSENTGNOMAD "$variant\t$h_compare->{variant_count}{$variant}\t0\t$ref\n";
             }
 	    if ($overlap eq 'Y'){
                 foreach my $o (keys %{$over->{AltAllele}}){
@@ -169,7 +172,7 @@ sub compare_gnomad{
             }
 	}
     }
-
+ #   }
     return($h_compare);
 }
 
@@ -203,7 +206,9 @@ sub compare_gnomad_bulk{
    ### SECTION END ###
    ### SECTION START - compare variant to each possible alternate allele ###
 	    for (my $j = 0; $j < scalar@alt_col; $j++){
+		print "alt_gnomad=$alt_col[$j]\n";
 		if ($ln[3] eq $ref && $alt_col[$j] eq $alt){# && $ln[6]){ #ne 'AC_Adj0_Filter'){                                                                                                        
+		    print "comparison: alt=$alt alt_gnomad=$alt_col[$j]\n";
 		  #  my $af;
 		    my @info = split(';', $ln[7]);
 		    foreach my $inf (@info){
@@ -264,7 +269,7 @@ sub create_variant_hash{
 		($c,$p,$id,$ref,$alt,$count) = ($pos[0],$pos[1],'NA','NA',$d[2],'NA');
 		#print "#$c#\t#$p#\t#$alt#\n";
 	    }
-	    my $variant = join("\t",$c,$p,$alt);
+	    my $variant = join("\t",$c,$p,$alt,$id);
 	    $h_var->{variant}{$variant}++;
 	    $h_var->{variant_wRef}{$variant}=$ref;
 	    my $position = join("\t",$c,$p);
